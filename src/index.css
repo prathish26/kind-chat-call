@@ -104,3 +104,69 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Animated gradient background for home section */
+@keyframes animateGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-bg {
+  background: linear-gradient(
+    -45deg,
+    hsl(187, 71%, 94%),
+    hsl(173, 70%, 85%),
+    hsl(270, 60%, 90%),
+    hsl(45, 80%, 95%)
+  );
+  background-size: 400% 400%;
+  animation: animateGradient 15s ease infinite;
+}
+
+/* Typing animation */
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  50% {
+    border-color: transparent;
+  }
+}
+
+.typing-text {
+  display: inline-block;
+  overflow: hidden;
+  border-right: 3px solid hsl(173, 100%, 24%);
+  white-space: nowrap;
+  animation: typing 3s steps(30) 0.5s forwards, blink 0.75s step-end infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-delay {
+  animation: fadeIn 1s ease-in 3.5s forwards;
+  opacity: 0;
+}
