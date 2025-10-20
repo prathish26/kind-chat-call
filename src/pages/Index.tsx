@@ -73,7 +73,7 @@ const Index = () => {
     }
   };
 
-  // Chat Module Logic (API Integration)
+  // Chat Module Logic (Gemini API Integration)
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
 
@@ -82,35 +82,63 @@ const Index = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
 
-    // Simulate API call to chatbot with proper fetch implementation
+    // [CHAT API INTEGRATION POINT]
+    // This is the Gemini API implementation
+    const GEMINI_API_KEY = "AIzaSyABn39rmheS9gcIc61q8Xwf5dRA09-Q7vo";
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    
     try {
-      // This is a simulation - in production, this would be a real endpoint
-      // fetch('https://api.chatservice.com/v2/query', {
-      //   method: 'POST',
-      //   body: JSON.stringify({ message: userText }),
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'X-API-Key': '481afa584a854ac4b49ecb539a7d7aad.v9OSVRmcryKzjRhiJmkjc8E2'
-      //   }
-      // })
+      console.log("[CHAT API] Calling Gemini API with key:", GEMINI_API_KEY);
       
-      console.log("[CHAT API] Simulating API call with key: 481afa584a854ac4b49ecb539a7d7aad.v9OSVRmcryKzjRhiJmkjc8E2");
+      // Build conversation history for Gemini
+      const conversationHistory = messages
+        .filter(msg => msg.content !== DISCLAIMER) // Exclude disclaimer from history
+        .map(msg => ({
+          role: msg.isBot ? "model" : "user",
+          parts: [{ text: msg.content }]
+        }));
       
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Add current user message
+      conversationHistory.push({
+        role: "user",
+        parts: [{ text: userText }]
+      });
+      
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: conversationHistory,
+          systemInstruction: {
+            parts: [{
+              text: "You are a friendly and empathetic mental health support assistant. Your role is to act as a supportive friend, offering a listening ear, providing encouragement, and suggesting general wellness techniques. You are not a medical professional and must never replace a doctor or therapist. Your primary goal is to make the user feel heard and supported. If a user discusses topics involving self-harm, severe crisis, or mentions a serious medical condition, you must immediately and gently guide them to seek professional help and provide a resource, such as the National Suicide Prevention Lifeline or a similar crisis hotline."
+            }]
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gemini API call failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const botText = data.candidates[0]?.content?.parts[0]?.text || "I'm here to listen.";
       
       const botResponse = {
-        content: "Thanks for sharing. I'm here to listen.",
+        content: botText,
         isBot: true,
       };
       setMessages((prev) => [...prev, botResponse]);
     } catch (err) {
-      console.error("API simulation error:", err);
+      console.error("Gemini API error:", err);
       const errorResponse = {
         content: "Sorry, I'm having a little trouble connecting right now.",
         isBot: true,
       };
       setMessages((prev) => [...prev, errorResponse]);
+      toast.error("Failed to connect to the chatbot. Please try again.");
     }
   };
 
