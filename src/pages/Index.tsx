@@ -299,6 +299,9 @@ const Index = () => {
           are experiencing a mental health crisis, please contact your local emergency
           services or a crisis hotline immediately.
         </p>
+        <p className="text-xs text-muted-foreground mt-4">
+          © {new Date().getFullYear()} All rights reserved by Prathish Raj
+        </p>
       </footer>
     </div>
   );
