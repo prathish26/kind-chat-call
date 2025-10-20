@@ -34,25 +34,30 @@ const Index = () => {
       return;
     }
 
+    // Auto-append +91 for Indian numbers
+    const cleanNumber = phoneNumber.replace(/\D/g, "").replace(/^0+/, "");
+    const formattedNumber = cleanNumber.startsWith("91") 
+      ? `+${cleanNumber}` 
+      : `+91${cleanNumber}`;
+
     // [CALL API INTEGRATION POINT]
-    // This is the JavaScript implementation using bland.ai API
     const API_URL = "https://api.bland.ai/v1/calls";
-    const CALL_API_KEY = "1d3a99c1-edcc-46e9-abd6-9a6ec337758d";
+    const CALL_API_KEY = "org_ac684c05de0014ad3fc7b9d71a46eb53719c180a1a5be79076c18b0eb16321d4b3bb6d13dbf5a1a1cf2169";
     const PATHWAY_ID = "08a0c2e2-9eb5-4811-b3cd-80e39dd77ca2";
 
     const headers = {
       "Content-Type": "application/json",
-      authorization: CALL_API_KEY,
+      Authorization: `Bearer ${CALL_API_KEY}`,
     };
 
     const body = JSON.stringify({
-      phone_number: phoneNumber,
+      phone_number: formattedNumber,
       pathway_id: PATHWAY_ID,
     });
 
     try {
       toast.info("Connecting your call...");
-      console.log("[CALL API] API Key:", CALL_API_KEY);
+      console.log("[CALL API] Formatted number:", formattedNumber);
       
       const response = await fetch(API_URL, {
         method: "POST",
@@ -61,6 +66,8 @@ const Index = () => {
       });
 
       if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Bland.ai API error:", errorData);
         throw new Error(`API call failed: ${response.statusText}`);
       }
 
@@ -69,7 +76,7 @@ const Index = () => {
       toast.success("Call is on its way!");
     } catch (error) {
       console.error("Error initiating call:", error);
-      toast.error("Could not initiate the call. Please check the console for details.");
+      toast.error("Could not initiate the call. Please try again.");
     }
   };
 
@@ -225,8 +232,8 @@ const Index = () => {
                   id="phone-input"
                   type="tel"
                   value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+1 (555) 123-4567"
+                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
+                  placeholder="9876543210"
                   className="h-14 text-lg rounded-xl border-2 focus:border-primary transition-colors"
                 />
               </div>
