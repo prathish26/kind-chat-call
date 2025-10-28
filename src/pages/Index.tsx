@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChatMessage } from "@/components/ChatMessage";
-import { Phone, Send, Home as HomeIcon } from "lucide-react";
+import { Phone, MessageSquare, Home, Send, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 type Section = "home" | "call" | "chat";
@@ -12,67 +15,96 @@ interface Message {
   isBot: boolean;
 }
 
-const DISCLAIMER = `Hello! I'm here to listen and support you. Please remember, I am an AI assistant and not a replacement for a licensed therapist or doctor. If you are in crisis, please contact a local emergency service.`;
-
 const Index = () => {
   const [currentSection, setCurrentSection] = useState<Section>("home");
-  const [messages, setMessages] = useState<Message[]>([
-    { content: DISCLAIMER, isBot: true },
-  ]);
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const navigate = useNavigate();
 
-  // Navigation function
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        setMessages([
+          {
+            content: "Hi! I'm The Heal Bot. I'm here to listen and support you. How can I help you today?",
+            isBot: true,
+          },
+        ]);
+      }
+      setIsLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user && messages.length === 0) {
+        setMessages([
+          {
+            content: "Hi! I'm The Heal Bot. I'm here to listen and support you. How can I help you today?",
+            isBot: true,
+          },
+        ]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, isLoading, navigate]);
+
   const navigateTo = (section: Section) => {
     setCurrentSection(section);
   };
 
-  // Call Module Logic (Bland.ai Implementation)
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Logged out successfully");
+    navigate("/auth");
+  };
+
   const initiateCall = async () => {
     if (!phoneNumber.trim()) {
       toast.error("Please enter a phone number.");
       return;
     }
 
-    // Auto-append +91 for Indian numbers
     const cleanNumber = phoneNumber.replace(/\D/g, "").replace(/^0+/, "");
     const formattedNumber = cleanNumber.startsWith("91") 
       ? `+${cleanNumber}` 
       : `+91${cleanNumber}`;
 
-    // [CALL API INTEGRATION POINT]
     const API_URL = "https://api.bland.ai/v1/calls";
     const CALL_API_KEY = "org_ac684c05de0014ad3fc7b9d71a46eb53719c180a1a5be79076c18b0eb16321d4b3bb6d13dbf5a1a1cf2169";
     const PATHWAY_ID = "08a0c2e2-9eb5-4811-b3cd-80e39dd77ca2";
 
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${CALL_API_KEY}`,
-    };
-
-    const body = JSON.stringify({
-      phone_number: formattedNumber,
-      pathway_id: PATHWAY_ID,
-    });
-
     try {
       toast.info("Connecting your call...");
-      console.log("[CALL API] Formatted number:", formattedNumber);
       
       const response = await fetch(API_URL, {
         method: "POST",
-        headers: headers,
-        body: body,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${CALL_API_KEY}`,
+        },
+        body: JSON.stringify({
+          phone_number: formattedNumber,
+          pathway_id: PATHWAY_ID,
+        }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Bland.ai API error:", errorData);
         throw new Error(`API call failed: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      console.log("Call initiated successfully:", result);
       toast.success("Call is on its way!");
     } catch (error) {
       console.error("Error initiating call:", error);
@@ -80,7 +112,6 @@ const Index = () => {
     }
   };
 
-  // Chat Module Logic (Gemini API Integration)
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
 
@@ -89,23 +120,16 @@ const Index = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
 
-    // [CHAT API INTEGRATION POINT]
-    // This is the Gemini API implementation
     const GEMINI_API_KEY = "AIzaSyABn39rmheS9gcIc61q8Xwf5dRA09-Q7vo";
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     try {
-      console.log("[CHAT API] Calling Gemini API with key:", GEMINI_API_KEY);
-      
-      // Build conversation history for Gemini
       const conversationHistory = messages
-        .filter(msg => msg.content !== DISCLAIMER) // Exclude disclaimer from history
         .map(msg => ({
           role: msg.isBot ? "model" : "user",
           parts: [{ text: msg.content }]
         }));
       
-      // Add current user message
       conversationHistory.push({
         role: "user",
         parts: [{ text: userText }]
@@ -155,65 +179,117 @@ const Index = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-center"
+        >
+          <div className="animate-pulse text-4xl font-bold text-primary mb-4">
+            The Heal Bot
+          </div>
+          <div className="text-muted-foreground">Loading...</div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Navigation Bar */}
-      <nav className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">The Heal Bot</h1>
-          <div className="flex gap-2">
-            <Button
-              variant={currentSection === "home" ? "default" : "ghost"}
-              onClick={() => navigateTo("home")}
-              className="gap-2"
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <nav className="bg-card/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <motion.h1
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-2xl font-bold text-primary"
             >
-              <HomeIcon className="h-4 w-4" />
-              Home
-            </Button>
+              The Heal Bot
+            </motion.h1>
+            <div className="flex-1 flex justify-center space-x-2 sm:space-x-4">
+              <Button
+                variant={currentSection === "home" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => navigateTo("home")}
+                className="flex items-center gap-2"
+              >
+                <Home className="h-4 w-4" />
+                <span className="hidden sm:inline">Home</span>
+              </Button>
+              <Button
+                variant={currentSection === "call" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => navigateTo("call")}
+                className="flex items-center gap-2"
+              >
+                <Phone className="h-4 w-4" />
+                <span className="hidden sm:inline">Call</span>
+              </Button>
+              <Button
+                variant={currentSection === "chat" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => navigateTo("chat")}
+                className="flex items-center gap-2"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Chat</span>
+              </Button>
+            </div>
             <Button
-              variant={currentSection === "call" ? "default" : "ghost"}
-              onClick={() => navigateTo("call")}
-              className="gap-2"
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="flex items-center gap-2"
             >
-              <Phone className="h-4 w-4" />
-              Talk (Voice)
-            </Button>
-            <Button
-              variant={currentSection === "chat" ? "default" : "ghost"}
-              onClick={() => navigateTo("chat")}
-              className="gap-2"
-            >
-              <Send className="h-4 w-4" />
-              Chat (Text)
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </div>
       </nav>
 
-      {/* Module 1: Home Section (Live and Unique Animation) */}
       {currentSection === "home" && (
-        <section
-          id="home"
-          className="flex-1 gradient-bg flex flex-col items-center justify-center px-4 py-20"
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex-1 flex flex-col items-center justify-center px-4 py-20"
         >
           <div className="text-center max-w-3xl">
-            <h2 className="text-6xl font-bold text-foreground mb-6 typing-text">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-5xl sm:text-6xl font-bold text-foreground mb-6"
+            >
               Welcome to The Heal Bot
-            </h2>
-            <p className="text-2xl text-muted-foreground fade-in-delay">
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-xl sm:text-2xl text-muted-foreground"
+            >
               A friendly space to talk and be heard
-            </p>
+            </motion.p>
           </div>
-        </section>
+        </motion.section>
       )}
 
-      {/* Module 2: AI Call Module (Bland.ai Implementation) */}
       {currentSection === "call" && (
-        <section
-          id="call-module"
-          className="flex-1 bg-gradient-to-b from-background to-secondary/30 flex items-center justify-center px-4 py-20"
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex-1 flex items-center justify-center px-4 py-20"
         >
-          <div className="bg-card rounded-3xl shadow-lg p-12 border border-border max-w-2xl w-full">
+          <div className="bg-card rounded-3xl shadow-lg p-8 sm:p-12 border border-border max-w-2xl w-full">
             <h2 className="text-3xl font-semibold text-foreground mb-6 text-center">
               Need to Talk?
             </h2>
@@ -233,28 +309,28 @@ const Index = () => {
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
-                  placeholder="9876543210"
-                  className="h-14 text-lg rounded-xl border-2 focus:border-primary transition-colors"
+                  placeholder="9xxxx09879"
+                  className="h-14 text-lg"
                 />
               </div>
               <Button
                 onClick={initiateCall}
                 size="lg"
-                className="w-full h-16 text-lg font-medium rounded-2xl shadow-md hover:shadow-xl transition-all duration-300"
+                className="w-full h-16 text-lg font-medium"
               >
                 <Phone className="mr-3 h-6 w-6" />
                 Click to Talk to an Assistant
               </Button>
             </div>
           </div>
-        </section>
+        </motion.section>
       )}
 
-      {/* Module 3: AI Chat Module */}
       {currentSection === "chat" && (
-        <section
-          id="chat-module"
-          className="flex-1 bg-gradient-to-b from-background to-secondary/30 flex items-center justify-center px-4 py-8"
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex-1 flex items-center justify-center px-4 py-8"
         >
           <div className="bg-card rounded-3xl shadow-lg border border-border overflow-hidden max-w-4xl w-full h-[calc(100vh-12rem)]">
             <div className="p-6 border-b border-border">
@@ -263,8 +339,7 @@ const Index = () => {
               </h2>
             </div>
 
-            {/* Chat Messages */}
-            <div className="h-[calc(100%-160px)] overflow-y-auto p-6 bg-gradient-to-b from-transparent to-secondary/10">
+            <div className="h-[calc(100%-160px)] overflow-y-auto p-6">
               {messages.map((message, index) => (
                 <ChatMessage
                   key={index}
@@ -274,7 +349,6 @@ const Index = () => {
               ))}
             </div>
 
-            {/* Chat Input */}
             <div className="p-6 border-t border-border bg-card">
               <div className="flex gap-3">
                 <Input
@@ -282,22 +356,21 @@ const Index = () => {
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Type your message here..."
-                  className="flex-1 h-12 rounded-xl border-2 focus:border-primary transition-colors"
+                  className="flex-1 h-12"
                 />
                 <Button
                   onClick={sendMessage}
                   size="lg"
-                  className="h-12 px-6 rounded-xl shadow-md hover:shadow-lg transition-all"
+                  className="h-12 px-6"
                 >
                   <Send className="h-5 w-5" />
                 </Button>
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
       )}
 
-      {/* Footer with Disclaimer */}
       <footer className="py-8 px-4 text-center border-t border-border bg-card/50">
         <p className="text-sm text-muted-foreground max-w-3xl mx-auto leading-relaxed">
           <strong>Important:</strong> The Heal Bot is an AI assistant designed to
