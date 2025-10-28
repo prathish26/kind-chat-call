@@ -28,9 +28,10 @@ const Index = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
+        const userName = session.user.user_metadata?.full_name || "there";
         setMessages([
           {
-            content: "Hi! I'm The Heal Bot. I'm here to listen and support you. How can I help you today?",
+            content: `Hello ${userName}! I'm The HealBot, your mental health support assistant. How are you feeling today?`,
             isBot: true,
           },
         ]);
@@ -43,9 +44,10 @@ const Index = () => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user && messages.length === 0) {
+        const userName = session.user.user_metadata?.full_name || "there";
         setMessages([
           {
-            content: "Hi! I'm The Heal Bot. I'm here to listen and support you. How can I help you today?",
+            content: `Hello ${userName}! I'm The HealBot, your mental health support assistant. How are you feeling today?`,
             isBot: true,
           },
         ]);
@@ -144,7 +146,7 @@ const Index = () => {
           contents: conversationHistory,
           systemInstruction: {
             parts: [{
-              text: "You are a friendly and empathetic mental health support assistant. Your role is to act as a supportive friend, offering a listening ear, providing encouragement, and suggesting general wellness techniques. You are not a medical professional and must never replace a doctor or therapist. Your primary goal is to make the user feel heard and supported. If a user discusses topics involving self-harm, severe crisis, or mentions a serious medical condition, you must immediately and gently guide them to seek professional help and provide a resource, such as the National Suicide Prevention Lifeline or a similar crisis hotline."
+              text: `You are The HealBot, a compassionate mental health support assistant talking to ${user?.user_metadata?.full_name || "the user"}. Keep ALL responses to 4-5 lines maximum. Be warm, supportive, and concise. Focus on mental wellness. If crisis detected, suggest professional help briefly.`
             }]
           }
         }),

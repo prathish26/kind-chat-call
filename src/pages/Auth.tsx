@@ -75,24 +75,34 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4 sm:p-6 md:p-8">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="bg-card border border-border rounded-2xl shadow-2xl p-8">
+        <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 sm:p-8">
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
             className="text-center mb-8"
           >
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
+              className="mb-4"
+            >
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent mb-2">
+                The HealBot
+              </h1>
+            </motion.div>
+            <h2 className="text-2xl font-semibold text-foreground mb-2">
               {isLogin ? "Welcome Back" : "Create Account"}
-            </h1>
-            <p className="text-muted-foreground">
+            </h2>
+            <p className="text-muted-foreground text-sm">
               {isLogin ? "Sign in to continue" : "Sign up to get started"}
             </p>
           </motion.div>
@@ -225,6 +235,19 @@ const Auth = () => {
               </Button>
             </motion.div>
           </form>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-6 pt-6 border-t border-border"
+          >
+            <p className="text-xs text-muted-foreground text-center leading-relaxed">
+              <strong>Disclaimer:</strong> The HealBot is an AI assistant designed to provide support and information. 
+              It is not a substitute for professional medical advice, diagnosis, or treatment. 
+              Always seek the advice of qualified health providers with any questions you may have.
+            </p>
+          </motion.div>
         </div>
       </motion.div>
     </div>
